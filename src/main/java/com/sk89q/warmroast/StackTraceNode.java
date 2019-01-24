@@ -20,7 +20,7 @@ package com.sk89q.warmroast;
 
 import java.util.List;
 
-public class StackTraceNode extends StackNode {
+public class StackTraceNode extends Node {
     
     private final String className;
     private final String methodName;
@@ -31,29 +31,21 @@ public class StackTraceNode extends StackNode {
         this.methodName = methodName;
     }
 
-    public String getClassName() {
-        return className;
-    }
-
-    public String getMethodName() {
-        return methodName;
-    }
-    
     @Override
     public String getNameHtml(McpMapping mapping) {
-        ClassMapping classMapping = mapping.mapClass(getClassName());
+        ClassMapping classMapping = mapping.mapClass(className);
         if (classMapping != null) {
-            String className = "<span class=\"matched\" title=\"" + 
-                    escapeHtml(getClassName()) + "\">" +
+            String className = "<span class=\"matched\" title=\"" +
+                    escapeHtml(this.className) + "\">" +
                     escapeHtml(classMapping.getActual()) + "</span>";
-            
-            List<String> actualMethods = classMapping.mapMethod(getMethodName());
+
+            List<String> actualMethods = classMapping.mapMethod(methodName);
             if (actualMethods.size() == 0) {
-                return className + "." + escapeHtml(getMethodName()) + "()";
+                return className + "." + escapeHtml(methodName) + "()";
             } else if (actualMethods.size() == 1) {
-                return className + 
+                return className +
                         ".<span class=\"matched\" title=\"" + 
-                        escapeHtml(getMethodName()) + "\">" + 
+                        escapeHtml(methodName) + "\">" +
                         escapeHtml(actualMethods.get(0)) + "</span>()";
             } else {
                 StringBuilder builder = new StringBuilder();
@@ -65,25 +57,41 @@ public class StackTraceNode extends StackNode {
                     builder.append(m);
                     first = false;
                 }
-                return className + 
+                return className +
                         ".<span class=\"multiple-matches\" title=\"" + 
-                            builder.toString() + "\">" + escapeHtml(getMethodName()) + "</span>()";
+                            builder.toString() + "\">" + escapeHtml(methodName) + "</span>()";
             }
         } else {
-            String actualMethod = mapping.mapMethodId(getMethodName());
+            String actualMethod = mapping.mapMethodId(methodName);
             if (actualMethod == null) {
-                return escapeHtml(getClassName()) + "." + escapeHtml(getMethodName()) + "()";
+                return escapeHtml(className) + "." + escapeHtml(methodName) + "()";
             } else {
-                return className + 
+                return className +
                         ".<span class=\"matched\" title=\"" + 
-                        escapeHtml(getMethodName()) + "\">" + 
+                        escapeHtml(methodName) + "\">" +
                         escapeHtml(actualMethod) + "</span>()";
             }
         }
     }
 
     @Override
-    public int compareTo(StackNode o) {
+    public String getNameJson(McpMapping mapping) {
+        ClassMapping classMapping = mapping.mapClass(className);
+        if (classMapping != null) {
+            // TODO finish writing this
+            return null;
+        } else {
+            String actualMethod = mapping.mapMethodId(methodName);
+            if (actualMethod == null) {
+                return escapeJson(className + "." + methodName);
+            } else {
+                return escapeJson(className + "." + actualMethod);
+            }
+        }
+    }
+
+    @Override
+    public int compareTo(Node o) {
         if (getTotalTime() == o.getTotalTime()) {
             return 0;
         } else if (getTotalTime()> o.getTotalTime()) {

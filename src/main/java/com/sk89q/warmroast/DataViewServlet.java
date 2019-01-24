@@ -18,14 +18,13 @@
 
 package com.sk89q.warmroast;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.Collection;
-
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Collection;
 
 public class DataViewServlet extends HttpServlet {
     
@@ -51,8 +50,8 @@ public class DataViewServlet extends HttpServlet {
         w.println("<div class=\"loading\">Downloading snapshot; please wait...</div>");
         w.println("<div class=\"stack\" style=\"display: none\">");
         synchronized (roast) {
-            Collection<StackNode> nodes = roast.getData().values();
-            for (StackNode node : nodes) {
+            Collection<ThreadNode> nodes = roast.getData().values();
+            for (ThreadNode node : nodes) {
                 w.println(node.toHtml(roast.getMapping()));
             }
             if (nodes.size() == 0) {

@@ -27,3 +27,4 @@
 *.ipr
 *.iws
 .idea/
+/out/

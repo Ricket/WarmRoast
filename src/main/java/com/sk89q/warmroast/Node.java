@@ -18,32 +18,52 @@
 
 package com.sk89q.warmroast;
 
+import com.google.common.escape.Escaper;
+import com.google.common.escape.Escapers;
+
 import java.text.NumberFormat;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-public class StackNode implements Comparable<StackNode> {
+public abstract class Node implements Comparable<Node> {
     
     private static final NumberFormat cssDec = NumberFormat.getPercentInstance(Locale.US);
+    private static final Escaper jsonEscaper;
     private final String name;
-    private final Map<String, StackNode> children = new HashMap<>();
+    private final Map<String, Node> children = new HashMap<>();
     private long totalTime;
     
     static {
         cssDec.setGroupingUsed(false);
         cssDec.setMaximumFractionDigits(2);
+
+        Escapers.Builder builder = Escapers.builder()
+                .addEscape('\\', "\\\\")
+                .addEscape('"', "\\\"")
+                .addEscape('/', "\\/")
+                .addEscape('\b', "\\b")
+                .addEscape('\t', "\\t")
+                .addEscape('\n', "\\n")
+                .addEscape('\f', "\\f")
+                .addEscape('\r', "\\r");
+        for (char c = 0; c < ' '; c++) {
+            String t = "000" + Integer.toHexString(c);
+            builder.addEscape(c, "\\u" + t.substring(t.length() - 4));
+        }
+        builder.setSafeRange((char) 0, (char) 0x7f);
+        builder.setUnsafeReplacement("");
+        jsonEscaper = builder.build();
     }
 
-    public StackNode(String name) {
+    Node(String name) {
         this.name = name;
     }
     
-    public String getName() {
+    String getName() {
         return name;
     }
     
@@ -51,24 +71,17 @@ public class StackNode implements Comparable<StackNode> {
         return escapeHtml(getName());
     }
 
-    public Collection<StackNode> getChildren() {
-        List<StackNode> list = new ArrayList<>(children.values());
-        Collections.sort(list);
-        return list;
+    public String getNameJson(McpMapping mapping) {
+        return escapeJson(getName());
     }
-    
-    public StackNode getChild(String name) {
-        StackNode child = children.get(name);
-        if (child == null) {
-            child = new StackNode(name);
-            children.put(name, child);
-        }
-        return child;
+
+    private Collection<Node> getChildren() {
+        return children.values().stream().sorted().collect(Collectors.toList());
     }
-    
-    public StackNode getChild(String className, String methodName) {
+
+    private Node getChild(String className, String methodName) {
         StackTraceNode node = new StackTraceNode(className, methodName);
-        StackNode child = children.get(node.getName());
+        Node child = children.get(node.getName());
         if (child == null) {
             child = node;
             children.put(node.getName(), node);
@@ -76,16 +89,12 @@ public class StackNode implements Comparable<StackNode> {
         return child;
     }
     
-    public long getTotalTime() {
+    long getTotalTime() {
         return totalTime;
-    }
-
-    public void log(long time) {
-        totalTime += time;
     }
     
     private void log(StackTraceElement[] elements, int skip, long time) {
-        log(time);
+        totalTime += time;
         
         if (elements.length - skip == 0) {
             return;
@@ -96,12 +105,12 @@ public class StackNode implements Comparable<StackNode> {
                 .log(elements, skip + 1, time);
     }
     
-    public void log(StackTraceElement[] elements, long time) {
+    void log(StackTraceElement[] elements, long time) {
         log(elements, 0, time);
     }
 
     @Override
-    public int compareTo(StackNode o) {
+    public int compareTo(Node o) {
         return getName().compareTo(o.getName());
     }
     
@@ -125,7 +134,7 @@ public class StackNode implements Comparable<StackNode> {
         builder.append("</span>");
         builder.append("</div>");
         builder.append("<ul class=\"children\">");
-        for (StackNode child : getChildren()) {
+        for (Node child : getChildren()) {
             builder.append("<li>");
             child.writeHtml(builder, mapping, totalTime);
             builder.append("</li>");
@@ -134,9 +143,34 @@ public class StackNode implements Comparable<StackNode> {
         builder.append("</div>");
     }
 
-    public String toHtml(McpMapping mapping) {
+    String toHtml(McpMapping mapping) {
         StringBuilder builder = new StringBuilder();
         writeHtml(builder, mapping, getTotalTime());
+        return builder.toString();
+    }
+
+    private void writeJson(StringBuilder builder, McpMapping mapping, long totalTime) {
+        builder.append("{");
+        builder.append("\"name\":\"");
+        builder.append(getNameJson(mapping));
+        builder.append("\",\"percent\":");
+        builder.append(formatCssPct(getTotalTime() / (double) totalTime));
+        builder.append(",\"timeMs\":");
+        builder.append(getTotalTime());
+        builder.append(",\"children\":[");
+        for (Iterator<Node> it = getChildren().iterator(); it.hasNext(); ) {
+            Node node = it.next();
+            node.writeJson(builder, mapping, totalTime);
+            if (it.hasNext()) {
+                builder.append(",");
+            }
+        }
+        builder.append("]}");
+    }
+
+    String toJson(McpMapping mapping) {
+        StringBuilder builder = new StringBuilder();
+        writeJson(builder, mapping, getTotalTime());
         return builder.toString();
     }
     
@@ -147,7 +181,7 @@ public class StackNode implements Comparable<StackNode> {
         }
         String padding = b.toString();
         
-        for (StackNode child : getChildren()) {
+        for (Node child : getChildren()) {
             builder.append(padding).append(child.getName());
             builder.append(" ");
             builder.append(getTotalTime()).append("ms");
@@ -163,12 +197,16 @@ public class StackNode implements Comparable<StackNode> {
         return builder.toString();
     }
     
-    protected static String formatCssPct(double pct) {
+    private static String formatCssPct(double pct) {
         return cssDec.format(pct);
     }
     
-    protected static String escapeHtml(String str) {
+    static String escapeHtml(String str) {
         return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    static String escapeJson(String str) {
+        return jsonEscaper.escape(str);
     }
 
 }
