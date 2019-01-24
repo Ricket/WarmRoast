@@ -20,6 +20,7 @@ package com.sk89q.warmroast;
 
 import com.google.common.escape.Escaper;
 import com.google.common.escape.Escapers;
+import com.google.common.html.HtmlEscapers;
 
 import java.text.NumberFormat;
 import java.util.Collection;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 public abstract class Node implements Comparable<Node> {
     
     private static final NumberFormat cssDec = NumberFormat.getPercentInstance(Locale.US);
+    private static final Escaper htmlEscaper = HtmlEscapers.htmlEscaper();
     private static final Escaper jsonEscaper;
     private final String name;
     private final Map<String, Node> children = new HashMap<>();
@@ -202,7 +204,7 @@ public abstract class Node implements Comparable<Node> {
     }
     
     static String escapeHtml(String str) {
-        return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+        return htmlEscaper.escape(str);
     }
 
     static String escapeJson(String str) {
