@@ -1,0 +1,23 @@
+apply plugin: 'java'
+
+group = 'com.sk89q'
+version = '1.0.0-SNAPSHOT'
+
+description = "WarmRoast"
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+tasks.withType(JavaCompile) {
+	options.encoding = 'UTF-8'
+}
+
+repositories {
+    jcenter()
+}
+dependencies {
+    compile group: 'org.eclipse.jetty', name: 'jetty-servlet', version:'9.0.3.v20130506'
+    compile group: 'commons-io', name: 'commons-io', version:'2.4'
+    compile group: 'net.sf.opencsv', name: 'opencsv', version:'2.0'
+    compile group: 'com.beust', name: 'jcommander', version:'1.30'
+    compile files("${System.getProperty('java.home')}/../lib/tools.jar")
+}
