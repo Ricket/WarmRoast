@@ -36,7 +36,7 @@ public abstract class Node implements Comparable<Node> {
     private static final Escaper htmlEscaper = HtmlEscapers.htmlEscaper();
     private static final Escaper jsonEscaper;
     private final String name;
-    private final Map<String, Node> children = new HashMap<>();
+    private final Map<String, StackTraceNode> children = new HashMap<>();
     private long totalTime;
     
     static {
@@ -69,24 +69,20 @@ public abstract class Node implements Comparable<Node> {
         return name;
     }
     
-    public String getNameHtml(McpMapping mapping) {
-        return escapeHtml(getName());
-    }
+    protected abstract String getNameHtml(McpMapping mapping);
 
-    public String getNameJson(McpMapping mapping) {
-        return escapeJson(getName());
-    }
+    protected abstract String getNameJson(McpMapping mapping);
 
-    private Collection<Node> getChildren() {
+    private Collection<StackTraceNode> getChildren() {
         return children.values().stream().sorted().collect(Collectors.toList());
     }
 
     private Node getChild(String className, String methodName) {
-        StackTraceNode node = new StackTraceNode(className, methodName);
-        Node child = children.get(node.getName());
+        String name = StackTraceNode.getName(className, methodName);
+        StackTraceNode child = children.get(name);
         if (child == null) {
-            child = node;
-            children.put(node.getName(), node);
+            child = new StackTraceNode(className, methodName);
+            children.put(child.getName(), child);
         }
         return child;
     }
@@ -151,7 +147,7 @@ public abstract class Node implements Comparable<Node> {
         return builder.toString();
     }
 
-    private void writeJson(StringBuilder builder, McpMapping mapping, long totalTime) {
+    protected void writeJson(StringBuilder builder, McpMapping mapping, long totalTime) {
         builder.append("{");
         builder.append("\"name\":\"");
         builder.append(getNameJson(mapping));
@@ -160,8 +156,8 @@ public abstract class Node implements Comparable<Node> {
         builder.append(",\"timeMs\":");
         builder.append(getTotalTime());
         builder.append(",\"children\":[");
-        for (Iterator<Node> it = getChildren().iterator(); it.hasNext(); ) {
-            Node node = it.next();
+        for (Iterator<StackTraceNode> it = getChildren().iterator(); it.hasNext(); ) {
+            StackTraceNode node = it.next();
             node.writeJson(builder, mapping, totalTime);
             if (it.hasNext()) {
                 builder.append(",");

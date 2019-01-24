@@ -26,9 +26,13 @@ public class StackTraceNode extends Node {
     private final String methodName;
 
     public StackTraceNode(String className, String methodName) {
-        super(className + "." + methodName + "()");
+        super(getName(className, methodName));
         this.className = className;
         this.methodName = methodName;
+    }
+
+    public static String getName(String className, String methodName) {
+        return className + "." + methodName + "()";
     }
 
     @Override
